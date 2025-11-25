@@ -1,7 +1,7 @@
 use tauri::{
     menu::{Menu, MenuItem},
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
-    AppHandle,Manager
+    AppHandle, Manager,
 };
 
 pub fn show_main_window(app: &AppHandle) {

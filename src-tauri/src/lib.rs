@@ -23,8 +23,8 @@ use platform::submit_area_for_ocr;
 use shortcuts::register_shortcuts;
 use std::sync::Mutex;
 use system_tray::setup_system_tray;
-use translation::{get_supported_languages, TranslationService};
 use tauri::Manager;
+use translation::{get_supported_languages, TranslationService};
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {

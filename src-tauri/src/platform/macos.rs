@@ -1,7 +1,7 @@
 use crate::{app_state::AppState, ocr_tasks::run_ocr_on_image_data};
+use tauri::Emitter;
 use tauri::{AppHandle, Manager, State};
 use tokio::{fs, process::Command};
-use tauri::Emitter;
 
 #[tauri::command]
 pub async fn submit_area_for_ocr(

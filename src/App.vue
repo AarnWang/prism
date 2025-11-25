@@ -482,6 +482,13 @@ onMounted(async () => {
   await getCurrentWindow().listen('ocr-pending', () => {
     isOcrProcessing.value = true;
   });
+
+  await getCurrentWindow().listen('prefill-text', (event) => {
+    const incomingText = typeof event.payload === 'string' ? event.payload : '';
+    inputText.value = incomingText || '';
+    translatedText.value = '';
+    autoResize();
+  });
 });
 
 // 组件卸载时清理

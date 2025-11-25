@@ -132,13 +132,13 @@
           
           <div class="setting-item">
             <label class="setting-label">
-              <span>滑动翻译</span>
+              <span>选词翻译</span>
               <HotkeyRecorder
                 v-model="localConfig.hotkeys.slide_translation"
                 placeholder="Ctrl+Shift+S"
               />
             </label>
-            <p class="setting-hint">按下快捷键启动滑动翻译</p>
+            <p class="setting-hint">按下快捷键启动选词翻译</p>
           </div>
           
           <div class="setting-item">

@@ -7,11 +7,10 @@ use crate::{
     translation::{TranslationRequest, TranslationResult},
 };
 use chrono;
-use tauri::{AppHandle, Manager, State};
 use tauri::Emitter;
+use tauri::{AppHandle, Manager, State};
 
-type ScreenshotImage =
-    screenshots::image::ImageBuffer<screenshots::image::Rgba<u8>, Vec<u8>>;
+type ScreenshotImage = screenshots::image::ImageBuffer<screenshots::image::Rgba<u8>, Vec<u8>>;
 
 fn screenshot_to_dynamic_image(image: &ScreenshotImage) -> Result<image::DynamicImage, String> {
     let (width, height) = (image.width(), image.height());
