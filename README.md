@@ -184,7 +184,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## Get Help
 
-- 🐛 Bug Reports: [GitHub Issues](https://github.com/yourusername/prism/issues)
+- 🐛 Bug Reports: [GitHub Issues](https://github.com/qyzhg/prism/issues)
 
 ---
 
