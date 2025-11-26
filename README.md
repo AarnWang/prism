@@ -11,8 +11,8 @@
 </div>
 
 ---
-<img src="icon.png" alt="图标" width="300" height="300">
----
+<img src="icon.png" alt="图标" width="350" height="350">
+
 ## Features
 
 - **🌍 Cross-Platform Support** - Full support for Windows, macOS, and Linux with consistent functionality

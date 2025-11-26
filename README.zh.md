@@ -11,8 +11,8 @@
 </div>
 
 ---
-<img src="icon.png" alt="图标" width="300" height="300">
----
+<img src="icon.png" alt="图标" width="350" height="350">
+
 ## 功能特性
 
 - **🌍 跨平台支持** - 完美支持 Windows、macOS 和 Linux，功能完全一致
