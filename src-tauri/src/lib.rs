@@ -42,7 +42,7 @@ pub fn run() {
             });
 
             register_shortcuts(app.handle());
-            setup_system_tray(&app.handle())?;
+            setup_system_tray(app.handle())?;
 
             Ok(())
         })

@@ -42,7 +42,7 @@ pub fn setup_system_tray(app: &AppHandle) -> tauri::Result<()> {
             } = event
             {
                 let app_handle = tray.app_handle();
-                show_main_window(&app_handle);
+                show_main_window(app_handle);
             }
         });
 

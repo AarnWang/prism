@@ -6,7 +6,6 @@ use crate::{
     shortcuts::register_shortcuts,
     translation::{TranslationRequest, TranslationResult},
 };
-use chrono;
 use tauri::Emitter;
 use tauri::{AppHandle, Manager, State};
 

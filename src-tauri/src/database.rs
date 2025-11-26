@@ -16,22 +16,6 @@ pub struct TranslationRecord {
     pub created_at: Option<String>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
-pub struct UserSetting {
-    pub id: Option<i64>,
-    pub key: String,
-    pub value: String,
-    pub updated_at: Option<String>,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct ApiKey {
-    pub id: Option<i64>,
-    pub service: String,
-    pub api_key: String,
-    pub created_at: Option<String>,
-}
-
 fn default_service() -> String {
     "openai".to_string()
 }
@@ -86,7 +70,6 @@ pub struct AppConfig {
 #[derive(Clone)]
 pub struct Database {
     conn: Arc<Mutex<Connection>>,
-    data_dir: PathBuf,
 }
 
 impl Database {
@@ -101,10 +84,7 @@ impl Database {
         let conn = Connection::open(db_path)?;
         let conn = Arc::new(Mutex::new(conn));
 
-        let db = Database {
-            conn,
-            data_dir: app_dir,
-        };
+        let db = Database { conn };
         db.init_tables()?;
         Ok(db)
     }
@@ -261,7 +241,7 @@ impl Database {
         let conn = self.conn.lock().unwrap();
         let mut stmt = conn.prepare("SELECT value FROM user_settings WHERE key = ?1")?;
 
-        let mut rows = stmt.query_map(params![key], |row| Ok(row.get::<_, String>(0)?))?;
+        let mut rows = stmt.query_map(params![key], |row| row.get::<_, String>(0))?;
 
         if let Some(row) = rows.next() {
             Ok(Some(row?))
@@ -285,7 +265,7 @@ impl Database {
         let conn = self.conn.lock().unwrap();
         let mut stmt = conn.prepare("SELECT api_key FROM api_keys WHERE service = ?1")?;
 
-        let mut rows = stmt.query_map(params![service], |row| Ok(row.get::<_, String>(0)?))?;
+        let mut rows = stmt.query_map(params![service], |row| row.get::<_, String>(0))?;
 
         if let Some(row) = rows.next() {
             Ok(Some(row?))
@@ -295,6 +275,7 @@ impl Database {
     }
 
     // 删除翻译记录
+    #[allow(dead_code)]
     pub fn delete_translation(&self, id: i64) -> Result<()> {
         let conn = self.conn.lock().unwrap();
         conn.execute("DELETE FROM translation_history WHERE id = ?1", params![id])?;

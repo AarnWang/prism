@@ -87,41 +87,6 @@ impl TranslationService {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum Language {
-    #[serde(rename = "en")]
-    English,
-    #[serde(rename = "zh")]
-    Chinese,
-    #[serde(rename = "ja")]
-    Japanese,
-    #[serde(rename = "ko")]
-    Korean,
-    #[serde(rename = "fr")]
-    French,
-    #[serde(rename = "de")]
-    German,
-    #[serde(rename = "es")]
-    Spanish,
-    #[serde(rename = "ru")]
-    Russian,
-}
-
-impl Language {
-    pub fn as_str(&self) -> &'static str {
-        match self {
-            Language::English => "en",
-            Language::Chinese => "zh",
-            Language::Japanese => "ja",
-            Language::Korean => "ko",
-            Language::French => "fr",
-            Language::German => "de",
-            Language::Spanish => "es",
-            Language::Russian => "ru",
-        }
-    }
-}
-
 pub struct Translator {
     api_key: String,
     base_url: String,
@@ -242,24 +207,6 @@ impl Translator {
     ) -> Result<TranslationResponse, String> {
         // todo: 预留口子
         Err("预留的,没实现呢".to_string())
-    }
-}
-
-pub fn get_language_name(code: &str) -> String {
-    match code {
-        "auto" => "自动检测".to_string(),
-        "zh" | "zh-CN" | "zh-cn" => "中文".to_string(),
-        "en" => "英语".to_string(),
-        "ja" | "jp" => "日语".to_string(),
-        "ko" => "韩语".to_string(),
-        "fr" => "法语".to_string(),
-        "de" => "德语".to_string(),
-        "es" => "西班牙语".to_string(),
-        "ru" => "俄语".to_string(),
-        "ar" => "阿拉伯语".to_string(),
-        "pt" => "葡萄牙语".to_string(),
-        "it" => "意大利语".to_string(),
-        _ => code.to_string(),
     }
 }
 

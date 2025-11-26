@@ -23,22 +23,21 @@ pub fn register_shortcuts(app: &AppHandle) {
         if let Ok(shortcut) = Shortcut::from_str(&hotkeys.popup_window) {
             let app_handle = app.clone();
             // 直接使用 on_shortcut，不需要先 register
-            let result = app.global_shortcut().on_shortcut(
-                shortcut,
-                move |_app, _shortcut, event| {
-                    eprintln!("🎯 SHORTCUT TRIGGERED: {:?}", shortcut);
-                    eprintln!("Event state: {:?}", event.state);
-                    if event.state == ShortcutState::Pressed {
-                        if let Some(window) = app_handle.get_webview_window("main") {
-                            eprintln!("✓ Window found, showing...");
-                            let _ = window.show();
-                            let _ = window.set_focus();
-                        } else {
-                            eprintln!("✗ Window 'main' NOT FOUND!");
+            let result =
+                app.global_shortcut()
+                    .on_shortcut(shortcut, move |_app, _shortcut, event| {
+                        eprintln!("🎯 SHORTCUT TRIGGERED: {:?}", shortcut);
+                        eprintln!("Event state: {:?}", event.state);
+                        if event.state == ShortcutState::Pressed {
+                            if let Some(window) = app_handle.get_webview_window("main") {
+                                eprintln!("✓ Window found, showing...");
+                                let _ = window.show();
+                                let _ = window.set_focus();
+                            } else {
+                                eprintln!("✗ Window 'main' NOT FOUND!");
+                            }
                         }
-                    }
-                },
-            );
+                    });
             match result {
                 Ok(_) => println!("Registered popup window shortcut: {}", hotkeys.popup_window),
                 Err(e) => {
@@ -54,17 +53,16 @@ pub fn register_shortcuts(app: &AppHandle) {
     if !hotkeys.screenshot_translation.is_empty() {
         if let Ok(shortcut) = Shortcut::from_str(&hotkeys.screenshot_translation) {
             let app_handle = app.clone();
-            let result = app.global_shortcut().on_shortcut(
-                shortcut,
-                move |_app, _shortcut, event| {
-                    if event.state == ShortcutState::Pressed {
-                        let handle = app_handle.clone();
-                        tauri::async_runtime::spawn(async move {
-                            handle_area_ocr_shortcut(handle).await;
-                        });
-                    }
-                },
-            );
+            let result =
+                app.global_shortcut()
+                    .on_shortcut(shortcut, move |_app, _shortcut, event| {
+                        if event.state == ShortcutState::Pressed {
+                            let handle = app_handle.clone();
+                            tauri::async_runtime::spawn(async move {
+                                handle_area_ocr_shortcut(handle).await;
+                            });
+                        }
+                    });
             match result {
                 Ok(_) => println!(
                     "Registered screenshot translation shortcut: {}",
@@ -83,17 +81,16 @@ pub fn register_shortcuts(app: &AppHandle) {
     if !hotkeys.slide_translation.is_empty() {
         if let Ok(shortcut) = Shortcut::from_str(&hotkeys.slide_translation) {
             let app_handle = app.clone();
-            let result = app.global_shortcut().on_shortcut(
-                shortcut,
-                move |_app, _shortcut, event| {
-                    if event.state == ShortcutState::Pressed {
-                        let handle = app_handle.clone();
-                        tauri::async_runtime::spawn(async move {
-                            handle_slide_translation_shortcut(handle).await;
-                        });
-                    }
-                },
-            );
+            let result =
+                app.global_shortcut()
+                    .on_shortcut(shortcut, move |_app, _shortcut, event| {
+                        if event.state == ShortcutState::Pressed {
+                            let handle = app_handle.clone();
+                            tauri::async_runtime::spawn(async move {
+                                handle_slide_translation_shortcut(handle).await;
+                            });
+                        }
+                    });
             match result {
                 Ok(_) => println!(
                     "Registered slide translation shortcut: {}",
@@ -126,10 +123,9 @@ async fn handle_slide_translation_shortcut(app_handle: AppHandle) {
 }
 
 fn show_main_window(app_handle: &AppHandle) -> Option<WebviewWindow> {
-    app_handle.get_webview_window("main").map(|window| {
+    app_handle.get_webview_window("main").inspect(|window| {
         let _ = window.show();
         let _ = window.set_focus();
-        window
     })
 }
 

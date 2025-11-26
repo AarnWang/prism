@@ -38,11 +38,8 @@ impl OcrService {
 
         let client = reqwest::Client::new();
         println!(
-            "{}",
-            format!(
-                "正在发送OCR请求...{}, 模型:{}",
-                self.base_url, self.model_id
-            )
+            "正在发送OCR请求...{}, 模型:{}",
+            self.base_url, self.model_id
         );
         let body = serde_json::json!({
             "model": self.model_id,
