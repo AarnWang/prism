@@ -330,6 +330,8 @@ pub async fn submit_area_for_ocr(
         main_window
             .emit("ocr-pending", true)
             .map_err(|e| e.to_string())?;
+        // Show main window immediately after screenshot is taken
+        let _ = main_window.show();
     }
 
     let app_handle_clone = app_handle.clone();
@@ -340,7 +342,7 @@ pub async fn submit_area_for_ocr(
 
         match capture_area_and_ocr(x, y, width, height, state).await {
             Ok(text) => {
-                println!("OCR成功，文本长度: {}, 内容: '{}'", text.len(), text);
+                println!("OCR成功,文本长度: {}, 内容: '{}'", text.len(), text);
                 if let Some(main_window) = app_handle_clone.get_webview_window("main") {
                     println!("发送ocr-result事件到主窗口");
                     match main_window.emit("ocr-result", &text) {
