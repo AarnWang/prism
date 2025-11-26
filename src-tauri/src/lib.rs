@@ -13,9 +13,9 @@ use app_state::AppState;
 use commands::submit_area_for_ocr;
 use commands::{
     capture_and_ocr, capture_area_and_ocr, capture_screen, capture_screen_area, clear_history,
-    get_api_key, get_app_config, get_setting, get_translation_history, reload_shortcuts,
-    save_api_key, save_app_config, save_setting, save_translation, search_history, set_ocr_result,
-    start_area_selection, translate_text,
+    fetch_available_models, get_api_key, get_app_config, get_setting, get_translation_history,
+    reload_shortcuts, save_api_key, save_app_config, save_setting, save_translation,
+    search_history, set_ocr_result, start_area_selection, translate_text,
 };
 use database::Database;
 #[cfg(target_os = "macos")]
@@ -74,7 +74,8 @@ pub fn run() {
             submit_area_for_ocr,
             start_area_selection,
             set_ocr_result,
-            get_supported_languages
+            get_supported_languages,
+            fetch_available_models
         ])
         .run(tauri::generate_context!())
         .expect("应用启动失败");

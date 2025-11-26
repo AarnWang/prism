@@ -54,65 +54,106 @@
           <div class="setting-item">
             <label class="setting-label">
               <span>模型ID</span>
-              <input 
-                type="text" 
-                v-model="localConfig.translation.model_id"
-                class="setting-input"
-                placeholder="gpt-5-nano"
-              >
+              <div class="model-input-group">
+                <input 
+                  type="text" 
+                  v-model="localConfig.translation.model_id"
+                  class="setting-input"
+                  placeholder="gpt-5-nano"
+                >
+                <button
+                  type="button"
+                  class="model-fetch-btn"
+                  :disabled="!canFetchTranslationModels || translationModelsLoading"
+                  @click="openTranslationModelModal"
+                >
+                  获取
+                </button>
+              </div>
             </label>
+            <!-- Removed inline select -->
+            <p
+              v-if="translationModelsError"
+              class="setting-hint setting-hint-error"
+            >
+              {{ translationModelsError }}
+            </p>
           </div>
         </div>
-        
+
         <div class="settings-section">
-          <h4>OCR设置</h4>
-          
-          <div class="setting-item">
-            <label class="setting-label">
-              <span>OCR Base URL</span>
-              <input 
-                type="text" 
-                v-model="localConfig.ocr.base_url"
-                class="setting-input"
-                placeholder="https://api.openai.com/v1"
-              >
-            </label>
-          </div>
-          
-          <div class="setting-item">
-            <label class="setting-label">
-              <span>OCR API Key</span>
-              <input 
-                type="password" 
-                v-model="localConfig.ocr.api_key"
-                class="setting-input"
-                placeholder="输入OCR API密钥"
-              >
-            </label>
-          </div>
-          
-          <div class="setting-item">
-            <label class="setting-label">
-              <span>OCR模型ID</span>
-              <input 
-                type="text" 
-                v-model="localConfig.ocr.model_id"
-                class="setting-input"
-                placeholder="gpt-4-vision-preview"
-              >
-            </label>
-          </div>
-          
-          <div class="setting-item">
-            <label class="setting-label">
-              <span>复用翻译设置</span>
+
+          <div class="section-header">
+            <h4>OCR设置</h4>
+            <label class="header-checkbox-label">
               <input 
                 type="checkbox" 
                 v-model="localConfig.ocr.reuse_translation"
                 class="setting-checkbox"
               >
+              <span>复用翻译设置</span>
             </label>
-            <p class="setting-hint">勾选后，OCR将使用翻译服务的API配置</p>
+          </div>
+          
+          <div v-if="!localConfig.ocr.reuse_translation">
+            <div class="setting-item">
+              <label class="setting-label">
+                <span>OCR Base URL</span>
+                <input 
+                  type="text" 
+                  v-model="localConfig.ocr.base_url"
+                  class="setting-input"
+                  placeholder="https://api.openai.com/v1"
+                >
+              </label>
+            </div>
+            
+            <div class="setting-item">
+              <label class="setting-label">
+                <span>OCR API Key</span>
+                <input 
+                  type="password" 
+                  v-model="localConfig.ocr.api_key"
+                  class="setting-input"
+                  placeholder="输入OCR API密钥"
+                >
+              </label>
+            </div>
+          </div>
+          
+          <div class="setting-item">
+            <label class="setting-label">
+              <span>OCR模型ID</span>
+              <div class="model-input-group">
+                <input 
+                  type="text" 
+                  v-model="localConfig.ocr.model_id"
+                  class="setting-input"
+                  placeholder="gpt-4-vision-preview"
+                >
+                <button
+                  type="button"
+                  class="model-fetch-btn"
+                  :disabled="!canFetchOcrModels || ocrModelsLoading"
+                  @click="openOcrModelModal"
+                >
+                  获取
+                </button>
+              </div>
+            </label>
+            <!-- Removed inline select -->
+            <p
+              v-if="ocrModelsError"
+              class="setting-hint setting-hint-error"
+            >
+              {{ ocrModelsError }}
+            </p>
+            <p
+              v-else-if="localConfig.ocr.reuse_translation"
+              class="setting-hint"
+            >
+              当前复用翻译配置，将使用翻译的Base URL和API Key获取模型
+            </p>
           </div>
         </div>
         
@@ -187,11 +228,34 @@
       </div>
     </div>
   </div>
+    <ModelSelectorModal
+      :show="showTranslationModelModal"
+      title="选择翻译模型"
+      :models="translationModels"
+      :loading="translationModelsLoading"
+      :error="translationModelsError"
+      @close="showTranslationModelModal = false"
+      @select="selectTranslationModel"
+      @retry="fetchTranslationModels"
+    />
+
+    <ModelSelectorModal
+      :show="showOcrModelModal"
+      title="选择OCR模型"
+      :models="ocrModels"
+      :loading="ocrModelsLoading"
+      :error="ocrModelsError"
+      @close="showOcrModelModal = false"
+      @select="selectOcrModel"
+      @retry="fetchOcrModels"
+    />
 </template>
 
 <script setup>
-import { ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
+import { invoke } from '@tauri-apps/api/core'
 import HotkeyRecorder from './HotkeyRecorder.vue'
+import ModelSelectorModal from './ModelSelectorModal.vue'
 
 const props = defineProps({
   show: Boolean,
@@ -249,6 +313,34 @@ const platformHotkeys = defaultConfig.hotkeys
 
 const localConfig = ref(JSON.parse(JSON.stringify(defaultConfig)))
 const validationError = ref('')
+const translationModels = ref([])
+const ocrModels = ref([])
+const translationModelsLoading = ref(false)
+const ocrModelsLoading = ref(false)
+const translationModelsError = ref('')
+const ocrModelsError = ref('')
+const translationModelSelection = ref('')
+const ocrModelSelection = ref('')
+const showTranslationModelModal = ref(false)
+const showOcrModelModal = ref(false)
+
+const getOcrConfigForFetch = () => {
+  if (!localConfig.value) return { base_url: '', api_key: '' }
+  if (localConfig.value?.ocr?.reuse_translation) {
+    return localConfig.value.translation || { base_url: '', api_key: '' }
+  }
+  return localConfig.value.ocr || { base_url: '', api_key: '' }
+}
+
+const canFetchTranslationModels = computed(() => {
+  const translation = localConfig.value?.translation || {}
+  return Boolean(translation.base_url?.trim() && translation.api_key?.trim())
+})
+
+const canFetchOcrModels = computed(() => {
+  const credentials = getOcrConfigForFetch()
+  return Boolean(credentials.base_url?.trim() && credentials.api_key?.trim())
+})
 
 const normalizeConfig = (config) => {
   if (!config) return null
@@ -298,6 +390,206 @@ watch(
   },
   { deep: true }
 )
+
+const resetTranslationModelsState = () => {
+  translationModels.value = []
+  translationModelSelection.value = ''
+  translationModelsError.value = ''
+}
+
+const resetOcrModelsState = () => {
+  ocrModels.value = []
+  ocrModelSelection.value = ''
+  ocrModelsError.value = ''
+}
+
+watch(
+  () => [
+    localConfig.value?.translation?.base_url,
+    localConfig.value?.translation?.api_key
+  ],
+  resetTranslationModelsState
+)
+
+watch(
+  () => [
+    localConfig.value?.ocr?.base_url,
+    localConfig.value?.ocr?.api_key,
+    localConfig.value?.ocr?.reuse_translation,
+    localConfig.value?.translation?.base_url,
+    localConfig.value?.translation?.api_key
+  ],
+  resetOcrModelsState
+)
+
+const syncTranslationSelection = () => {
+  const current = localConfig.value?.translation?.model_id || ''
+  if (translationModels.value.some(model => model.id === current)) {
+    translationModelSelection.value = current
+  } else {
+    translationModelSelection.value = ''
+  }
+}
+
+const syncOcrSelection = () => {
+  const current = localConfig.value?.ocr?.model_id || ''
+  if (ocrModels.value.some(model => model.id === current)) {
+    ocrModelSelection.value = current
+  } else {
+    ocrModelSelection.value = ''
+  }
+}
+
+watch(
+  () => localConfig.value?.translation?.model_id,
+  () => syncTranslationSelection(),
+  { immediate: true }
+)
+
+watch(translationModels, () => syncTranslationSelection())
+
+watch(
+  () => localConfig.value?.ocr?.model_id,
+  () => syncOcrSelection(),
+  { immediate: true }
+)
+
+watch(ocrModels, () => syncOcrSelection())
+
+const normalizeBaseUrl = (url = '') => {
+  return (url || '').trim().replace(/\/+$/, '')
+}
+
+const extractModelList = (payload) => {
+  if (!payload) return []
+
+  let rawList = []
+  if (Array.isArray(payload)) {
+    rawList = payload
+  } else if (Array.isArray(payload.data)) {
+    rawList = payload.data
+  } else if (Array.isArray(payload.models)) {
+    rawList = payload.models
+  } else if (
+    payload.data &&
+    typeof payload.data === 'object' &&
+    !Array.isArray(payload.data)
+  ) {
+    rawList = Object.values(payload.data)
+  }
+
+  return rawList
+    .map(item => {
+      if (typeof item === 'string') {
+        return { id: item, label: item }
+      }
+      if (!item || typeof item !== 'object') {
+        return null
+      }
+      const id = item.id || item.model || item.name || item.slug
+      if (!id) {
+        return null
+      }
+      const ownedBy = item.owned_by || item.organization || item.provider
+      const label = ownedBy ? `${id} (${ownedBy})` : id
+      return { id, label }
+    })
+    .filter(Boolean)
+}
+
+const fetchModels = async (target) => {
+  const isTranslation = target === 'translation'
+  const state = isTranslation
+    ? {
+        modelsRef: translationModels,
+        loadingRef: translationModelsLoading,
+        errorRef: translationModelsError,
+        credentials: localConfig.value?.translation
+      }
+    : {
+        modelsRef: ocrModels,
+        loadingRef: ocrModelsLoading,
+        errorRef: ocrModelsError,
+        credentials: getOcrConfigForFetch()
+      }
+
+  const credentials = state.credentials || {}
+  if (!credentials.base_url?.trim() || !credentials.api_key?.trim()) {
+    state.errorRef.value = '请先输入Base URL和API Key'
+    return
+  }
+
+  state.loadingRef.value = true
+  state.errorRef.value = ''
+
+  try {
+    const endpoint = `${normalizeBaseUrl(credentials.base_url)}/models`
+    const response = await fetch(endpoint, {
+      method: 'GET',
+      headers: {
+        Authorization: `Bearer ${credentials.api_key.trim()}`,
+        'Content-Type': 'application/json',
+        Accept: 'application/json'
+      }
+    })
+
+    if (!response.ok) {
+      let errorText = ''
+      try {
+        errorText = await response.text()
+      } catch (e) {
+        console.warn('无法读取错误响应正文', e)
+      }
+      throw new Error(errorText || `请求失败: ${response.status}`)
+    }
+
+    const payload = await response.json()
+    const list = extractModelList(payload)
+    if (!list.length) {
+      throw new Error('未从接口获取到模型列表')
+    }
+
+    state.modelsRef.value = list
+  } catch (error) {
+    const message =
+      (error && error.message) ||
+      (typeof error === 'string' ? error : '') ||
+      '获取模型列表失败'
+    state.errorRef.value = message
+  } finally {
+    state.loadingRef.value = false
+  }
+}
+
+const fetchTranslationModels = () => fetchModels('translation')
+const fetchOcrModels = () => fetchModels('ocr')
+
+const applyModelSelection = (target, value) => {
+  if (!value) return
+  if (target === 'translation') {
+    localConfig.value.translation.model_id = value
+  } else if (target === 'ocr') {
+    localConfig.value.ocr.model_id = value
+  }
+}
+
+const openTranslationModelModal = () => {
+  showTranslationModelModal.value = true
+  fetchTranslationModels()
+}
+
+const openOcrModelModal = () => {
+  showOcrModelModal.value = true
+  fetchOcrModels()
+}
+
+const selectTranslationModel = (modelId) => {
+  applyModelSelection('translation', modelId)
+}
+
+const selectOcrModel = (modelId) => {
+  applyModelSelection('ocr', modelId)
+}
 
 const resetToDefaults = () => {
   localConfig.value = JSON.parse(JSON.stringify(defaultConfig))
@@ -395,12 +687,28 @@ const saveSettings = () => {
 }
 
 .settings-section h4 {
-  margin: 0 0 16px 0;
+  margin: 0;
   font-size: 16px;
   font-weight: 600;
   color: #1f2937;
+}
+
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
   padding-bottom: 8px;
   border-bottom: 1px solid #e5e7eb;
+}
+
+.header-checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: #374151;
+  cursor: pointer;
 }
 
 .setting-item {
@@ -428,7 +736,8 @@ const saveSettings = () => {
   font-size: 14px;
   background: white;
   transition: all 0.2s;
-  min-width: 200px;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .setting-select:focus,
@@ -525,6 +834,54 @@ const saveSettings = () => {
 
 .btn-primary:hover {
   background: #2563eb;
+}
+
+.model-input-group {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+}
+
+.model-input-group .setting-input {
+  flex: 1;
+}
+
+.model-fetch-btn {
+  padding: 6px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  background: #f9fafb;
+  font-size: 13px;
+  color: #374151;
+  cursor: pointer;
+  transition: all 0.2s;
+  min-width: 60px;
+}
+
+.model-fetch-btn:hover {
+  background: #f3f4f6;
+}
+
+.model-fetch-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.model-select {
+  margin-top: 8px;
+}
+
+.model-select select {
+  width: 100%;
+  padding: 6px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 14px;
+  background: white;
+}
+
+.setting-hint-error {
+  color: #dc2626;
 }
 
 @media (max-width: 768px) {

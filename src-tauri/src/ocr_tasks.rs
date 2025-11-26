@@ -18,10 +18,15 @@ pub async fn run_ocr_on_image_data(
             Ok(Some(config)) => {
                 if config.ocr.reuse_translation {
                     let translation_config = config.translation;
+                    let model_id = if !config.ocr.model_id.is_empty() {
+                        config.ocr.model_id
+                    } else {
+                        translation_config.model_id
+                    };
                     (
                         translation_config.api_key,
                         translation_config.base_url,
-                        translation_config.model_id,
+                        model_id,
                     )
                 } else {
                     let ocr_config = config.ocr;
