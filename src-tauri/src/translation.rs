@@ -131,7 +131,6 @@ impl Translator {
             "开始请求大模型翻译从 {} 到 {}.",
             request.from_lang, request.to_lang
         );
-        // 将蛇形&驼峰都转成标准的格式
         let normalized_text = Self::normalize_naming_convention(&request.text);
         let text_to_translate = &normalized_text;
         let prompt = format!(
@@ -140,21 +139,20 @@ impl Translator {
         );
 
         let body = serde_json::json!({
-            "model": self.model_id,
-            "messages": [
-                {
-                    "role": "system",
-                    "content": "You are a professional translator. Translate the given text accurately while preserving the original meaning and tone."
-                },
-                {
-                    "role": "user",
-                    "content": prompt
-                }
-            ],
-            "max_tokens": 1000,
-            "temperature": 0.3
-        });
-
+        "model": self.model_id,
+        "messages": [
+            {
+                "role": "system",
+                "content": "You are a professional translator. Translate the given text accurately while preserving the original meaning and tone.\n\nTranslation rules:\n1. Translate Chinese content into English\n2. Translate all non-Chinese content into Chinese\n3. Only return the translated result, without any explanations or additional commentary\n4. Preserve code formatting, variable names (snake_case, camelCase), and special characters\n5. Maintain the original tone and technical terminology accuracy"
+            },
+            {
+                "role": "user",
+                "content": prompt
+            }
+        ],
+        "max_tokens": 1000,
+        "temperature": 0.3
+    });
         let endpoint = format!("{}/chat/completions", self.base_url.trim_end_matches('/'));
 
         let response = client
