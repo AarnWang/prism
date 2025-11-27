@@ -6,6 +6,7 @@ pub struct TranslationRequest {
     pub text: String,
     pub from_lang: String,
     pub to_lang: String,
+    pub max_tokens: u32,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -150,7 +151,7 @@ impl Translator {
                     "content": prompt
                 }
             ],
-            "max_tokens": 1000,
+            "max_tokens": request.max_tokens,
             "temperature": 0.3
         });
         let endpoint = format!("{}/chat/completions", self.base_url.trim_end_matches('/'));

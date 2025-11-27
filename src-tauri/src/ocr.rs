@@ -6,6 +6,7 @@ use serde::{Deserialize, Serialize};
 pub struct OcrRequest {
     pub image_data: Vec<u8>,
     pub image_format: String,
+    pub max_tokens: u32,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -61,7 +62,7 @@ impl OcrService {
                     ]
                 }
             ],
-            "max_tokens": 1000,
+            "max_tokens": request.max_tokens,
             "temperature": 0.1
         });
 

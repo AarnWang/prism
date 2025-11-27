@@ -33,10 +33,17 @@ const getDefaultHotkeys = () => {
   };
 };
 
+const MIN_MAX_TOKENS = 1000;
+
 const createDefaultProxy = () => ({
   enabled: false,
   mode: "system",
   server: ""
+});
+
+const createDefaultTokenLimits = () => ({
+  enable_user_max_tokens: false,
+  user_max_tokens: 4096
 });
 
 const mergeProxyDefaults = (proxy) => {
@@ -65,8 +72,37 @@ const createDefaultConfig = () => ({
     model_id: "gpt-4-vision-preview"
   },
   proxy: createDefaultProxy(),
-  hotkeys: getDefaultHotkeys()
+  hotkeys: getDefaultHotkeys(),
+  token_limits: createDefaultTokenLimits()
 });
+
+const mergeConfigWithDefaults = (config = {}) => {
+  const defaults = createDefaultConfig();
+  return {
+    ...defaults,
+    ...config,
+    translation: {
+      ...defaults.translation,
+      ...(config.translation || {})
+    },
+    ocr: {
+      ...defaults.ocr,
+      ...(config.ocr || {})
+    },
+    proxy: mergeProxyDefaults({
+      ...defaults.proxy,
+      ...(config.proxy || {})
+    }),
+    hotkeys: {
+      ...defaults.hotkeys,
+      ...(config.hotkeys || {})
+    },
+    token_limits: {
+      ...defaults.token_limits,
+      ...(config.token_limits || {})
+    }
+  };
+};
 
 // 响应式数据
 const inputText = ref("");
@@ -341,13 +377,13 @@ const showSettings = () => {
 const loadSettings = async () => {
   try {
     const config = await invoke('get_app_config')
-    config.proxy = mergeProxyDefaults(config.proxy)
-    appConfig.value = config
-    tempConfig.value = JSON.parse(JSON.stringify(config))
+    const normalizedConfig = mergeConfigWithDefaults(config)
+    appConfig.value = normalizedConfig
+    tempConfig.value = JSON.parse(JSON.stringify(normalizedConfig))
     
     // 从配置中初始化 useTranslationForOcr
-    if (config.ocr && typeof config.ocr.reuse_translation !== 'undefined') {
-        useTranslationForOcr.value = config.ocr.reuse_translation
+    if (normalizedConfig.ocr && typeof normalizedConfig.ocr.reuse_translation !== 'undefined') {
+        useTranslationForOcr.value = normalizedConfig.ocr.reuse_translation
     }
   } catch (error) {
     console.error('加载设置失败:', error)
@@ -372,7 +408,7 @@ const handleKeydown = (event) => {
 
 const saveSettings = async (newConfig) => {
   // 如果没有传入newConfig，则使用tempConfig (兼容旧调用方式)
-  const configToProcess = newConfig || tempConfig.value;
+  const configToProcess = mergeConfigWithDefaults(newConfig || tempConfig.value);
   configToProcess.proxy = mergeProxyDefaults(configToProcess.proxy)
 
   if (!configToProcess?.translation?.api_key?.trim()) {
@@ -398,6 +434,27 @@ const saveSettings = async (newConfig) => {
     setTimeout(() => saveMessage.value = '', 3000)
     return
   }
+
+  const tokenLimits = {
+    ...createDefaultTokenLimits(),
+    ...(configToProcess.token_limits || {})
+  }
+  tokenLimits.user_max_tokens = Number(tokenLimits.user_max_tokens)
+  if (!Number.isFinite(tokenLimits.user_max_tokens)) {
+    tokenLimits.user_max_tokens = createDefaultTokenLimits().user_max_tokens
+  } else {
+    tokenLimits.user_max_tokens = Math.floor(tokenLimits.user_max_tokens)
+  }
+  if (
+    tokenLimits.enable_user_max_tokens &&
+    tokenLimits.user_max_tokens < MIN_MAX_TOKENS
+  ) {
+    saveMessage.value = { text: `自定义最大Token必须不小于${MIN_MAX_TOKENS}`, type: 'error' }
+    setTimeout(() => saveMessage.value = '', 3000)
+    return
+  }
+  tokenLimits.user_max_tokens = Math.max(tokenLimits.user_max_tokens, MIN_MAX_TOKENS)
+  configToProcess.token_limits = tokenLimits
   
   isSaving.value = true
   try {

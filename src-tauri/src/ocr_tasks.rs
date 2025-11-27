@@ -1,6 +1,7 @@
 use crate::{
     app_state::AppState,
     ocr::{OcrRequest, OcrService},
+    token_limits::calculate_image_response_tokens,
 };
 use image::{imageops::FilterType, GenericImageView, ImageFormat};
 use std::io::Cursor;
@@ -8,7 +9,7 @@ use tauri::State;
 
 const MIN_OCR_DIMENSION: u32 = 28;
 
-fn ensure_minimum_ocr_size(image_data: Vec<u8>) -> Result<Vec<u8>, String> {
+fn ensure_minimum_ocr_size(image_data: Vec<u8>) -> Result<(Vec<u8>, u32, u32), String> {
     let image =
         image::load_from_memory(&image_data).map_err(|e| format!("解析OCR图片失败: {}", e))?;
     let (width, height) = image.dimensions();
@@ -18,7 +19,7 @@ fn ensure_minimum_ocr_size(image_data: Vec<u8>) -> Result<Vec<u8>, String> {
     }
 
     if width >= MIN_OCR_DIMENSION && height >= MIN_OCR_DIMENSION {
-        return Ok(image_data);
+        return Ok((image_data, width, height));
     }
 
     let scale = f32::max(
@@ -40,16 +41,16 @@ fn ensure_minimum_ocr_size(image_data: Vec<u8>) -> Result<Vec<u8>, String> {
         width, height, target_width, target_height
     );
 
-    Ok(buffer)
+    Ok((buffer, target_width, target_height))
 }
 
 pub async fn run_ocr_on_image_data(
     image_data: Vec<u8>,
     state: State<'_, AppState>,
 ) -> Result<String, String> {
-    let processed_image_data = ensure_minimum_ocr_size(image_data)?;
+    let (processed_image_data, width, height) = ensure_minimum_ocr_size(image_data)?;
 
-    let (api_key, base_url, model_id) = {
+    let (api_key, base_url, model_id, token_config) = {
         let db = state
             .db
             .lock()
@@ -57,6 +58,7 @@ pub async fn run_ocr_on_image_data(
 
         match db.get_app_config() {
             Ok(Some(config)) => {
+                let token_config = config.token_limits.clone();
                 if config.ocr.reuse_translation {
                     let translation_config = config.translation;
                     let model_id = if !config.ocr.model_id.is_empty() {
@@ -68,10 +70,16 @@ pub async fn run_ocr_on_image_data(
                         translation_config.api_key,
                         translation_config.base_url,
                         model_id,
+                        token_config,
                     )
                 } else {
                     let ocr_config = config.ocr;
-                    (ocr_config.api_key, ocr_config.base_url, ocr_config.model_id)
+                    (
+                        ocr_config.api_key,
+                        ocr_config.base_url,
+                        ocr_config.model_id,
+                        token_config,
+                    )
                 }
             }
             Ok(None) => {
@@ -88,9 +96,12 @@ pub async fn run_ocr_on_image_data(
     }
 
     let ocr_service = OcrService::new(api_key, base_url, model_id);
+    let max_tokens =
+        calculate_image_response_tokens(width, height, Some(&token_config));
     let ocr_request = OcrRequest {
         image_data: processed_image_data,
         image_format: "png".to_string(),
+        max_tokens,
     };
 
     let ocr_result = ocr_service

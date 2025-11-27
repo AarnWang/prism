@@ -197,9 +197,9 @@ watch(() => props.modelValue, (newVal) => {
 
 .ocr-loading {
   position: absolute;
-  top: 50%;
+  top: 20px;
   left: 50%;
-  transform: translate(-50%, -50%);
+  transform: translateX(-50%);
   display: flex;
   align-items: center;
   gap: 8px;

@@ -8,6 +8,7 @@ mod platform;
 mod shortcuts;
 mod system_tray;
 mod translation;
+mod token_limits;
 
 use app_state::AppState;
 #[cfg(not(target_os = "macos"))]

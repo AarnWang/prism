@@ -82,6 +82,45 @@
         </div>
 
         <div class="settings-section">
+          <div class="section-header">
+            <h4>Token限制</h4>
+            <label class="header-checkbox-label">
+              <input 
+                type="checkbox" 
+                v-model="localConfig.token_limits.enable_user_max_tokens"
+                class="setting-checkbox"
+              >
+              <span>启用自定义上限</span>
+            </label>
+          </div>
+          <div 
+            class="setting-item"
+            v-if="localConfig.token_limits.enable_user_max_tokens"
+          >
+            <label class="setting-label">
+              <span>最大输出Token</span>
+              <input
+                type="number"
+                min="1000"
+                step="100"
+                class="setting-input"
+                v-model.number="localConfig.token_limits.user_max_tokens"
+                placeholder="4096"
+              >
+            </label>
+            <p class="setting-hint">
+              动态计算的max_tokens至少为{{ MIN_MAX_TOKENS }}，启用后不会超过自定义上限
+            </p>
+          </div>
+          <p
+            v-else
+            class="setting-hint"
+          >
+            启用自定义上限后可输入最大输出Token（不少于{{ MIN_MAX_TOKENS }}）
+          </p>
+        </div>
+
+        <div class="settings-section">
 
           <div class="section-header">
             <h4>OCR设置</h4>
@@ -322,6 +361,8 @@ const isMacPlatform =
   typeof navigator !== 'undefined' &&
   /mac/i.test((navigator.userAgent || navigator.platform || '').toLowerCase())
 
+const MIN_MAX_TOKENS = 1000
+
 const getDefaultHotkeys = () => {
   if (isMacPlatform) {
     return {
@@ -357,7 +398,11 @@ const defaultConfig = {
     mode: "system",
     server: ""
   },
-  hotkeys: getDefaultHotkeys()
+  hotkeys: getDefaultHotkeys(),
+  token_limits: {
+    enable_user_max_tokens: false,
+    user_max_tokens: 4096
+  }
 }
 
 const platformHotkeys = defaultConfig.hotkeys
@@ -420,10 +465,38 @@ const normalizeConfig = (config) => {
   return null
 }
 
+const mergeWithDefaults = (config = {}) => {
+  const base = JSON.parse(JSON.stringify(defaultConfig))
+  return {
+    ...base,
+    ...config,
+    translation: {
+      ...base.translation,
+      ...(config.translation || {})
+    },
+    ocr: {
+      ...base.ocr,
+      ...(config.ocr || {})
+    },
+    proxy: {
+      ...base.proxy,
+      ...(config.proxy || {})
+    },
+    hotkeys: {
+      ...base.hotkeys,
+      ...(config.hotkeys || {})
+    },
+    token_limits: {
+      ...base.token_limits,
+      ...(config.token_limits || {})
+    }
+  }
+}
+
 const syncLocalConfig = () => {
   const normalized = normalizeConfig(props.config)
   if (normalized) {
-    localConfig.value = JSON.parse(JSON.stringify(normalized))
+    localConfig.value = mergeWithDefaults(normalized)
   } else {
     localConfig.value = JSON.parse(JSON.stringify(defaultConfig))
   }
@@ -678,6 +751,26 @@ const saveSettings = () => {
     validationError.value = '请输入代理地址'
     return
   }
+
+  const tokenLimits = {
+    ...defaultConfig.token_limits,
+    ...(payload.token_limits || {})
+  }
+  tokenLimits.user_max_tokens = Number(tokenLimits.user_max_tokens)
+  if (!Number.isFinite(tokenLimits.user_max_tokens)) {
+    tokenLimits.user_max_tokens = defaultConfig.token_limits.user_max_tokens
+  } else {
+    tokenLimits.user_max_tokens = Math.floor(tokenLimits.user_max_tokens)
+  }
+  if (
+    tokenLimits.enable_user_max_tokens &&
+    tokenLimits.user_max_tokens < MIN_MAX_TOKENS
+  ) {
+    validationError.value = `自定义最大Token必须不小于${MIN_MAX_TOKENS}`
+    return
+  }
+  tokenLimits.user_max_tokens = Math.max(tokenLimits.user_max_tokens, MIN_MAX_TOKENS)
+  payload.token_limits = tokenLimits
 
   emit('save', payload)
   emit('close')

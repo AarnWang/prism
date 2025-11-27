@@ -93,6 +93,27 @@ impl Default for ProxyConfig {
     }
 }
 
+fn default_user_max_tokens() -> u32 {
+    4096
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct TokenLimitConfig {
+    #[serde(default)]
+    pub enable_user_max_tokens: bool,
+    #[serde(default = "default_user_max_tokens")]
+    pub user_max_tokens: u32,
+}
+
+impl Default for TokenLimitConfig {
+    fn default() -> Self {
+        TokenLimitConfig {
+            enable_user_max_tokens: false,
+            user_max_tokens: default_user_max_tokens(),
+        }
+    }
+}
+
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct AppConfig {
     pub translation: TranslationConfig,
@@ -100,6 +121,8 @@ pub struct AppConfig {
     pub hotkeys: HotkeyConfig,
     #[serde(default)]
     pub proxy: ProxyConfig,
+    #[serde(default)]
+    pub token_limits: TokenLimitConfig,
 }
 
 #[derive(Clone)]
@@ -389,6 +412,7 @@ impl Database {
             },
             hotkeys: HotkeyConfig::platform_default(),
             proxy: ProxyConfig::default(),
+            token_limits: TokenLimitConfig::default(),
         })
     }
 }

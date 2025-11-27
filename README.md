@@ -144,7 +144,7 @@ Currently in development - Coming soon
 
 - [x] Core translation functionality
 - [x] Screenshot OCR integration
-- [ ] Custom hotkey configuration
+- [x] Custom hotkey configuration
 - [ ] Translation memory and terminology management
 - [ ] Batch file translation
 - [ ] Plugin ecosystem

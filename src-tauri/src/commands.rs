@@ -3,10 +3,11 @@ use crate::http_client::{configure_http_client, http_client, validate_http_clien
 use crate::system_tray::show_main_window;
 use crate::{
     app_state::AppState,
-    database::{AppConfig, TranslationRecord},
+    database::{AppConfig, TokenLimitConfig, TranslationRecord},
     ocr_tasks::run_ocr_on_image_data,
     platform,
     shortcuts::register_shortcuts,
+    token_limits::calculate_text_response_tokens,
     translation::{TranslationRequest, TranslationResult},
 };
 use serde::Serialize;
@@ -50,11 +51,8 @@ pub async fn translate_text(
     _service: String,
     state: State<'_, AppState>,
 ) -> Result<TranslationResult, String> {
-    let request = TranslationRequest {
-        text,
-        from_lang: from_language.unwrap_or_default(),
-        to_lang: to_language,
-    };
+    let from_lang_value = from_language.unwrap_or_default();
+    let to_lang_value = to_language;
 
     let translation_service = {
         let service = state
@@ -64,7 +62,7 @@ pub async fn translate_text(
         service.clone()
     };
 
-    let (api_key, base_url, model_id) = {
+    let (api_key, base_url, model_id, token_config) = {
         let db = state
             .db
             .lock()
@@ -72,22 +70,33 @@ pub async fn translate_text(
 
         match db.get_app_config() {
             Ok(Some(config)) => {
+                let token_config = config.token_limits.clone();
                 let translation_config = config.translation;
                 (
                     translation_config.api_key,
                     translation_config.base_url,
                     translation_config.model_id,
+                    token_config,
                 )
             }
             Ok(None) => (
                 "".to_string(),
                 "https://api.openai.com/v1".to_string(),
                 "gpt-5-nano".to_string(),
+                TokenLimitConfig::default(),
             ),
             Err(e) => {
                 return Err(format!("获取应用配置失败: {}", e));
             }
         }
+    };
+
+    let max_tokens = calculate_text_response_tokens(&text, Some(&token_config));
+    let request = TranslationRequest {
+        text,
+        from_lang: from_lang_value,
+        to_lang: to_lang_value,
+        max_tokens,
     };
 
     translation_service
