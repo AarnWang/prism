@@ -574,14 +574,60 @@ fn trigger_copy_shortcut() {
 
 #[cfg(target_os = "windows")]
 fn trigger_copy_shortcut() {
-    use std::process::Command;
+    use std::{thread, time::Duration};
+    use windows::Win32::UI::Input::KeyboardAndMouse::{
+        SendInput, INPUT, INPUT_0, INPUT_KEYBOARD, KEYBDINPUT, KEYEVENTF_KEYUP, VK_C, VK_CONTROL,
+    };
 
-    let script = r#"Add-Type -AssemblyName System.Windows.Forms; [System.Windows.Forms.SendKeys]::SendWait('^c'); Start-Sleep -Milliseconds 50"#;
-    let _ = Command::new("powershell")
-        .arg("-NoProfile")
-        .arg("-Command")
-        .arg(script)
-        .output();
+    unsafe {
+        let inputs = [
+            // Press Ctrl
+            INPUT {
+                r#type: INPUT_KEYBOARD,
+                Anonymous: INPUT_0 {
+                    ki: KEYBDINPUT {
+                        wVk: VK_CONTROL,
+                        ..Default::default()
+                    },
+                },
+            },
+            // Press C
+            INPUT {
+                r#type: INPUT_KEYBOARD,
+                Anonymous: INPUT_0 {
+                    ki: KEYBDINPUT {
+                        wVk: VK_C,
+                        ..Default::default()
+                    },
+                },
+            },
+            // Release C
+            INPUT {
+                r#type: INPUT_KEYBOARD,
+                Anonymous: INPUT_0 {
+                    ki: KEYBDINPUT {
+                        wVk: VK_C,
+                        dwFlags: KEYEVENTF_KEYUP,
+                        ..Default::default()
+                    },
+                },
+            },
+            // Release Ctrl
+            INPUT {
+                r#type: INPUT_KEYBOARD,
+                Anonymous: INPUT_0 {
+                    ki: KEYBDINPUT {
+                        wVk: VK_CONTROL,
+                        dwFlags: KEYEVENTF_KEYUP,
+                        ..Default::default()
+                    },
+                },
+            },
+        ];
+
+        SendInput(&inputs, std::mem::size_of::<INPUT>() as i32);
+        thread::sleep(Duration::from_millis(50));
+    }
 }
 
 #[cfg(not(any(target_os = "macos", target_os = "windows")))]
